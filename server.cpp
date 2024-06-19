@@ -66,15 +66,15 @@ enum
 
 struct ntyevent
 {
-    int fd;
-    int events;
-    void (*callback)(int fd, int events, void *arg);
-    void *arg;
-    int status;
-    char* buffer;
-    int length;
-    //状态
-    int status_machine;
+  int fd;
+  int events;
+  void (*callback)(int fd, int events, void *arg);
+  void *arg;
+  int status;
+  char* buffer;
+  int length;
+  //状态
+  int status_machine;
 };
 
 //根据\r\n结束符截取数据
