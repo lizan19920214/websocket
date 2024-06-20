@@ -1,3 +1,12 @@
+/**
+ * 编译：
+ * g++ -o websocket BaseFunc.h websocket.cpp -lcrypto -lpthread
+ * 运行：
+ * 服务器默认8888端口：./websocket
+ * 模拟客户端：./websocat ws://127.0.0.1:8888
+ * 连接上之后就可以给服务器发送消息了
+*/
+
 #include "websocket.h"
 #include "BaseFunc.h"
 #include <openssl/sha.h>  //for SHA1
@@ -199,6 +208,10 @@ void WebSocket::recvClient(int clientfd)
         outBuf.clear();
         int outLen = 0;
         getWSFrameData(it->second.buffer, sizeof(it->second.buffer), outBuf, &outLen);
+        for(auto it : outBuf)
+        {
+            std::cout << it;
+        }
     }
 }
 
@@ -272,6 +285,10 @@ int WebSocket::getWSFrameData(char* msg, int msgLen, std::vector<char>& outBuf, 
     if(msgLen < 2)
         return INCOMPLETE_FRAME;
 
+    std::cout << "orimsg Begin" << std::endl;
+    std::cout << msg << std::endl;
+    std::cout << "orimsg End\n" << std::endl;
+
     uint8_t fin_ = 0;
     uint8_t opcode_ = 0;
     uint8_t mask_ = 0;
@@ -334,13 +351,17 @@ int WebSocket::getWSFrameData(char* msg, int msgLen, std::vector<char>& outBuf, 
         return INCOMPLETE_FRAME;
     }
 
-   printf("WEBSOCKET PROTOCOL\n"
-           "FIN: %d\n"
-           "OPCODE: %d\n"
-           "MASK: %d\n"
-           "PAYLOADLEN: %d\n"
-           "outLen:%d\n",
-           fin_, opcode_, mask_, payload_length_, *outLen);
+    std::cout << "analysis data begin" << std::endl;
+
+    printf("WEBSOCKET PROTOCOL\n"
+            "FIN: %d\n"
+            "OPCODE: %d\n"
+            "MASK: %d\n"
+            "PAYLOADLEN: %d\n"
+            "outLen:%d\n",
+            fin_, opcode_, mask_, payload_length_, *outLen);
+
+    std::cout << "analysis data end\n" << std::endl;
 
     //断开连接类型数据包
     if ((int)opcode_ == 0x8)
@@ -348,7 +369,6 @@ int WebSocket::getWSFrameData(char* msg, int msgLen, std::vector<char>& outBuf, 
 
     return 0;
 }
-
 
 int WebSocket::makeWSFrameData(char* msg, int msgLen, std::vector<char>& outBuf)
 {
