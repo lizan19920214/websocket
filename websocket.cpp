@@ -279,7 +279,16 @@ std::string WebSocket::respondHandshake()
     return response;
 }
 
-
+/**
+ * 协议解析
+ * 0                1                       2                   3
+ * 0 1 2 3 4 5 6 7  0 1 2 3 4 5 6 7 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ * 第一个字节的第1位为FIN，第2位为RSV1，第3位为RSV2，第4位为RSV3
+ * 第一个字节的第5-8位为Opcode,
+ * 第二个字节的第1为MASK
+ * 第二个字节的第2-8位为Payload len(所以十进制取值范围为0-127)
+ * 第9-12位为Mask，第13-15位为Payload length
+*/
 int WebSocket::getWSFrameData(char* msg, int msgLen, std::vector<char>& outBuf, int* outLen)
 {
     if(msgLen < 2)
@@ -295,14 +304,14 @@ int WebSocket::getWSFrameData(char* msg, int msgLen, std::vector<char>& outBuf, 
     uint8_t masking_key_[4] = {0,0,0,0};
     uint64_t payload_length_ = 0;
     int pos = 0;
-    //FIN
+    //FIN 第一个字节的第1位
     fin_ = (unsigned char)msg[pos] >> 7;
-    //Opcode
+    //Opcode 第一个字节的最后4位 00001111 与运算符，取后四位(5-8位)
     opcode_ = msg[pos] & 0x0f;
     pos++;
-    //MASK
+    //MASK 第二个字节的第1位
     mask_ = (unsigned char)msg[pos] >> 7;
-    //Payload length
+    //Payload length 01111111 与运算符 取后2-8位(十进制取值范围为0-127)
     payload_length_ = msg[pos] & 0x7f;
     pos++;
     if(payload_length_ == 126)
