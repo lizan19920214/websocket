@@ -282,16 +282,19 @@ std::string WebSocket::respondHandshake()
 }
 
 /**
- * 协议解析
+ * 数据帧格式详解
  * 0                1             2               3
  * 0 1 2 3 4 5 6 7  0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7
  * 0 1 2 3 4 5 6 7  0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7
  * 0 1 2 3 4 5 6 7  0 1 2 3 4 5 6 7
- * 第一个字节的第1位为FIN，第2位为RSV1，第3位为RSV2，第4位为RSV3
- * 第一个字节的第5-8位为Opcode,
- * 第二个字节的第1为MASK
- * 第二个字节的第2-8位为Payload len(所以十进制取值范围为0-127)
- * 第9-12位为Mask，第13-15位为Payload length
+ * 第1个字节的第1位为FIN，第2位为RSV1，第3位为RSV2，第4位为RSV3
+ * 第1个字节的第5-8位为Opcode,
+ * 第2个字节的第1位为MASK
+ * 第2个字节的第2-8位为Payload_len(所以十进制取值范围为0-127)
+ * 第3-4字节为Payload_len为126时，Payload_len的真实长度
+ * 第3-10字节为Payload_len为127时，Payload_len的真实长度
+ * 第11-14位为Mask的掩码
+ * 第15以后为Payload_data业务数据
 */
 int WebSocket::getWSFrameData(char* msg, int msgLen, std::vector<char>& outBuf, int* outLen)
 {
@@ -339,6 +342,11 @@ int WebSocket::getWSFrameData(char* msg, int msgLen, std::vector<char>& outBuf, 
     //Masking-key
     if(mask_ == 1)
     {
+        //标志业务数据是否经过掩码处理
+        //client->server为1 需要解码
+        //server->client为0 不需要解码
+        //如果服务器收到客户端发送的未经掩码处理的数据包，则会自动断开连接；
+        //反之，如果客户端收到了服务端发送的经过掩码处理的数据包，也会自动断开连接
         for(int i = 0; i < 4; i++)
             masking_key_[i] = msg[pos + i];
         pos += 4;
@@ -351,11 +359,13 @@ int WebSocket::getWSFrameData(char* msg, int msgLen, std::vector<char>& outBuf, 
         outBuf.clear();
         if(mask_ != 1)
         {
+            //直接取值
             char* dataBegin = msg + pos;
             outBuf.insert(outBuf.begin(), dataBegin, dataBegin+payload_length_);
         }
         else
         {
+            //掩码解析
             for(uint i = 0; i < payload_length_; i++)
             {
                 int j = i % 4;
