@@ -5,6 +5,8 @@
  * 服务器默认8888端口：./websocket
  * 模拟客户端：./websocat ws://127.0.0.1:8888
  * 连接上之后就可以给服务器发送消息了
+ * 协议解析参考：
+ * https://www.cnblogs.com/zhangmingda/p/12678630.html
 */
 
 #include "websocket.h"
@@ -281,8 +283,10 @@ std::string WebSocket::respondHandshake()
 
 /**
  * 协议解析
- * 0                1                       2                   3
- * 0 1 2 3 4 5 6 7  0 1 2 3 4 5 6 7 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+ * 0                1             2               3
+ * 0 1 2 3 4 5 6 7  0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7
+ * 0 1 2 3 4 5 6 7  0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7
+ * 0 1 2 3 4 5 6 7  0 1 2 3 4 5 6 7
  * 第一个字节的第1位为FIN，第2位为RSV1，第3位为RSV2，第4位为RSV3
  * 第一个字节的第5-8位为Opcode,
  * 第二个字节的第1为MASK
@@ -316,13 +320,17 @@ int WebSocket::getWSFrameData(char* msg, int msgLen, std::vector<char>& outBuf, 
     pos++;
     if(payload_length_ == 126)
     {
+        //payload_length为126时，则后面2个字节形成的16位无符号整型数的值是payload的真实长度，注意这里是16位
         uint16_t length = 0;
         memcpy(&length, msg + pos, 2);
         pos += 2;
+        //将网络字节序转为主机字节序
         payload_length_ = ntohs(length);
     }
     else if(payload_length_ == 127)
     {
+        //payload_length为127时，则后面8个字节形成的64位无符号整型数的值是payload的真实长度。
+        //这里用uint32_t，所以移动4位就可以了
         uint32_t length = 0;
         memcpy(&length, msg + pos, 4);
         pos += 4;
