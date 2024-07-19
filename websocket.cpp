@@ -288,12 +288,26 @@ std::string WebSocket::respondHandshake()
  * 0 1 2 3 4 5 6 7  0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7 0 1 2 3 4 5 6 7
  * 0 1 2 3 4 5 6 7  0 1 2 3 4 5 6 7
  * 第1个字节的第1位为FIN，第2位为RSV1，第3位为RSV2，第4位为RSV3
+ *      FIN用于描述消息是否结束，如果为1则该消息为消息尾部，0则表示还有后续数据包
  * 第1个字节的第5-8位为Opcode,
+ *      表示消息接收类型，如果接收到未知的opcode，接收端必须关闭连接
+ * 　　 OPCODE定义的范围：
+　　　　0x0表示附加数据帧
+　　　　0x1表示文本数据帧
+　　　　0x2表示二进制数据帧
+　　　　0x3-7暂时无定义，为以后的非控制帧保留
+　　　　0x8表示连接关闭
+　　　　0x9表示ping
+　　　　0xA表示pong
+　　　　0xB-F暂时无定义，为以后的控制帧保留
+
  * 第2个字节的第1位为MASK
+        用于标识Payload_data是否经过掩码处理，客户端发给服务器的数据需要进行掩码处理，这里要为1，否则服务器会断开连接
+        同理服务器发给客户端的数据不需要进行掩码处理，这里为0，同样客户端收到是1的话，也要断开连接
  * 第2个字节的第2-8位为Payload_len(所以十进制取值范围为0-127)
  * 第3-4字节为Payload_len为126时，Payload_len的真实长度
  * 第3-10字节为Payload_len为127时，Payload_len的真实长度
- * 第11-14位为Mask的掩码
+ * 第11-14字节为Mask的掩码
  * 第15以后为Payload_data业务数据
 */
 int WebSocket::getWSFrameData(char* msg, int msgLen, std::vector<char>& outBuf, int* outLen)
